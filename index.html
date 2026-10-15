@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="kn" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kannada Voice to Nudi (ASCII) Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .font-mono-custom {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        @font-face {
+            font-family: 'Nudi 01 e';
+            src: local('Nudi 01 e'), local('Nudi01e'), local('Nudi 01e');
+        }
+        .nudi-direct-preview {
+            font-family: 'Nudi 01 e', 'Nudi01e', sans-serif !important;
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card-hover:hover {
+            border-color: rgba(255, 255, 255, 0.18);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Animated Mic Glow */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 22px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .recording-active {
+            animation: pulse-ring 1.8s infinite ease-in-out;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+
+        /* Custom Scrollbar */
+        textarea::-webkit-scrollbar {
+            width: 6px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-full flex flex-col antialiased bg-slate-950 selection:bg-rose-500 selection:text-white relative overflow-x-hidden">
+
+    <!-- Ambient Neon Background Glows -->
+    <div class="fixed top-[-10%] left-[-10%] w-[45vw] h-[45vw] rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-rose-600/15 blur-[120px] pointer-events-none"></div>
+    <div class="fixed top-[30%] right-[20%] w-[30vw] h-[30vw] rounded-full bg-emerald-600/10 blur-[100px] pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="glass-card sticky top-0 z-50 border-b border-slate-800/80 px-4 sm:px-8 py-4">
+        <div class="max-w-7xl mx-auto flex flex-row justify-between items-center">
+            <div class="flex items-center gap-3.5">
+                <div class="relative">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-rose-500 to-indigo-500 rounded-xl blur opacity-60"></div>
+                    <div class="relative bg-slate-900 text-white p-3 rounded-xl border border-white/10 shadow-xl">
+                        <i class="fa-solid fa-microphone-lines text-xl bg-gradient-to-tr from-rose-400 to-indigo-400 bg-clip-text text-transparent"></i>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-2">
+                        Kannada Voice <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 font-normal text-slate-400">Speech To Text</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-medium hidden sm:block">Instant Unicode Speech Recognition & Visual Nudi (ASCII) Transcoder</p>
+                </div>
+            </div>
+            
+            <div id="statusBadge" class="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-900/90 border border-slate-700/60 text-slate-300 shadow-inner">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6 relative z-10">
+
+        <!-- Speech Input Visualizer Card -->
+        <div class="glass-card glass-card-hover rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center gap-5 relative overflow-hidden text-center">
+            <div class="absolute inset-0 bg-gradient-to-b from-rose-500/5 via-transparent to-indigo-500/5 pointer-events-none"></div>
+
+            <!-- Animated Mic Button Container -->
+            <div class="relative flex items-center justify-center">
+                <button id="recordBtn" class="relative z-10 group bg-gradient-to-br from-rose-500 via-red-600 to-rose-700 hover:from-rose-400 hover:to-red-600 text-white w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center shadow-2xl shadow-rose-600/40 transition-all duration-300 focus:outline-none active:scale-95">
+                    <i id="micIcon" class="fa-solid fa-microphone text-2xl sm:text-3xl group-hover:scale-110 transition-transform duration-200"></i>
+                </button>
+            </div>
+
+            <div class="max-w-lg z-10 space-y-1">
+                <p id="recordInstruction" class="text-sm sm:text-base font-semibold text-slate-200 tracking-wide">
+                    Tap the microphone & start speaking in Kannada
+                </p>
+                <div id="interimText" class="text-xs sm:text-sm font-mono-custom text-indigo-300 font-medium italic min-h-[1.5rem] transition-all bg-indigo-950/40 px-3 py-1 rounded-lg border border-indigo-500/20 inline-block"></div>
+            </div>
+        </div>
+
+        <!-- Conversion Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+
+            <!-- Unicode Panel -->
+            <div class="glass-card glass-card-hover rounded-3xl p-5 sm:p-6 flex flex-col relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500"></div>
+
+                <div class="flex justify-between items-center pb-4 border-b border-slate-800/80 mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1 rounded-lg text-xs font-bold tracking-wider uppercase shadow-sm">
+                            Step 1
+                        </span>
+                        <h2 class="font-bold text-slate-100 text-sm sm:text-base tracking-wide">Unicode Text (ಕನ್ನಡ)</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="clearUnicodeBtn" class="text-xs text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 px-3 py-1.5 rounded-lg border border-transparent hover:border-rose-500/20 transition-all duration-150 flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-trash-can"></i> Clear
+                        </button>
+                        <button id="copyUnicodeBtn" class="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 px-3.5 py-1.5 rounded-lg transition-all duration-150 shadow-md flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+
+                <textarea id="unicodeInput" class="w-full flex-1 bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 sm:p-5 text-slate-100 placeholder-slate-600 text-base sm:text-lg leading-relaxed focus:outline-none focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/20 resize-none min-h-[240px] transition-all font-sans" placeholder="Spoken voice transcript will appear here in Unicode..."></textarea>
+
+                <div class="flex justify-between items-center mt-3 text-xs text-slate-400 font-medium">
+                    <span id="unicodeCharCount" class="font-mono-custom text-indigo-400">0 characters</span>
+                    <span class="flex items-center gap-1.5 text-slate-500"><i class="fa-solid fa-globe text-indigo-400"></i> Standard Kannada</span>
+                </div>
+            </div>
+
+            <!-- Nudi Output Panel -->
+            <div class="glass-card glass-card-hover rounded-3xl p-5 sm:p-6 flex flex-col relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600"></div>
+
+                <div class="flex justify-between items-center pb-4 border-b border-slate-800/80 mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-lg text-xs font-bold tracking-wider uppercase shadow-sm">
+                            Step 2
+                        </span>
+                        <h2 class="font-bold text-slate-100 text-sm sm:text-base tracking-wide">Nudi Preview</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="toggleFontBtn" class="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 px-3 py-1.5 rounded-lg transition-all duration-150 shadow-md flex items-center gap-1.5 font-medium">
+                            <i class="fa-solid fa-code"></i> Mode: Nudi Font
+                        </button>
+                        <button id="copyNudiBtn" class="text-xs bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg transition-all duration-150 shadow-lg shadow-emerald-500/20 flex items-center gap-1.5">
+                            <i class="fa-solid fa-copy"></i> Copy Nudi Text
+                        </button>
+                    </div>
+                </div>
+
+                <textarea id="nudiOutput" readonly class="nudi-direct-preview w-full flex-1 bg-slate-950/70 border border-slate-800/80 rounded-2xl p-4 sm:p-5 text-emerald-400 placeholder-slate-600 text-xl sm:text-2xl leading-relaxed focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 resize-none min-h-[240px] transition-all" placeholder="ನಿಮ್ಮ ನುಡಿ ಫಾಂಟ್ ಅಕ್ಷರಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ..."></textarea>
+
+                <div class="flex justify-between items-center mt-3 text-xs text-slate-400 font-medium">
+                    <span id="nudiCharCount" class="font-mono-custom text-emerald-400">0 characters</span>
+                    <span class="flex items-center gap-1.5">Font: <strong id="fontLabel" class="text-emerald-400 font-semibold">Nudi 01 e (Visual)</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips Banner -->
+        <div class="glass-card rounded-2xl p-4 border border-slate-800/80 text-xs sm:text-sm text-slate-300 flex items-start sm:items-center gap-3.5 shadow-lg">
+            <div class="bg-indigo-500/10 text-indigo-400 p-2.5 rounded-xl border border-indigo-500/20 shrink-0">
+                <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+            </div>
+            <div class="leading-relaxed">
+                <strong class="text-slate-100 font-semibold">Desktop Publishing Tip:</strong> Click <strong class="text-emerald-400 font-semibold">Copy Nudi Text</strong>, paste into MS Word / Photoshop, and change your font family to <code class="bg-slate-950 text-emerald-400 px-2 py-0.5 rounded-md border border-slate-800 font-mono-custom">Nudi 01 e</code>. Ensure the font is installed on your computer.
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-card border-t border-slate-800/80 py-4 text-center text-xs text-slate-500 font-medium relative z-10">
+        Kannada Voice to Nudi (ASCII) Converter &bull; Built for Desktop Publishing & Speech Workflows
+    </footer>
+
+    <script>
+        // Unicode Kannada -> Nudi 01 e (ANSI/ASCII) converter
+        const NUDI = (() => {
+          const T = {
+            'ಕ':['PÀ','Q','Ì'],   'ಖ':['RÀ','S','Í'],   'ಗ':['UÀ','V','Î'],   'ಘ':['WÀ','X','Ï'],   'ಙ':['YÀ','YÀ','Ð'],
+            'ಚ':['ZÀ','a','Ñ'],   'ಛ':['bÀ','c','Ò'],   'ಜ':['eÀ','f','Ó'],   'ಝ':['gÀ','gÀ','Ô'],   'ಞ':['ZÀ','ZÀ','Õ'],
+            'ಟ':['l','n','Ö'],    'ಠ':['oÀ','p','×'],   'ಡ':['qÀ','r','Ø'],   'ಢ':['qsÀ','rs','Ù'], 'ಣ':['uÀ','t','Ú'],
+            'ತ':['vÀ','w','Û'],   'ಥ':['xÀ','y','Ü'],   'ದ':['zÀ','¢','Ý'],   'ಧ':['{À','|','Þ'],   'ನ':['£À','¤','ß'],
+            'ಪ':['¥À','¦','à'],   'ಫ':['¥sÀ','¦s','á'], 'ಬ':['¨À','©','â'],   'ಭ':['¨sÀ','©s','ã'], 'ಮ':['ªÀÄ','«Ä','ä'],
+            'ಯ':['AiÀÄ','¬Ä','å'],'ರ':['gÀ','j','æ'],   'ಱ':['gÀ','j','ç'],   'ಲ':['®À','¯','è'],   'ವ':['ªÀ','«','é'],
+            'ಶ':['±À','²','ê'],   'ಷ':['µÀ','¶','ë'],   'ಸ':['¸À','¹','ì'],   'ಹ':['ºÀ','»','í'],   'ಳ':['¼À','½','î']
+          };
+          const stem = {}, stemA = {}, stemE = {};
+          for (const k in T) { const b = T[k][0]; stem[k] = b.endsWith('À') ? b.slice(0,-1) : b; }
+          stem['ಮ'] = 'ªÀ'; stem['ಯ'] = 'AiÀ'; 
+          stem['ವ'] = 'ª';
+          for (const k in T) { stemA[k] = stem[k]; stemE[k] = stem[k] + 'É'; }
+          stemA['ಮ'] = 'ªÀi'; stemA['ಯ'] = 'AiÀi'; 
+          stemE['ಮ'] = 'ªÉÄ'; stemE['ಯ'] = 'AiÉÄ'; 
+          const vowels = {'ಅ':'C','ಆ':'D','ಇ':'E','ಈ':'F','ಉ':'G','ಊ':'H','ಋ':'IÄ','ಎ':'J','ಏ':'K','ಐ':'L','ಒ':'M','ಓ':'N','ಔ':'O'};
+          return { T, stem, stemA, stemE, vowels };
+        })();
+
+        function convertUnicodeToNudi(text) {
+          if (!text) return '';
+          const { T, stem, stemA, stemE, vowels } = NUDI;
+          const isC = ch => ch && T[ch] !== undefined;
+          const VIRAMA = '್';
+          let out = '', i = 0;
+
+          while (i < text.length) {
+            const ch = text[i];
+
+            if (vowels[ch]) { out += vowels[ch]; i++; }
+            else if (isC(ch)) {
+              let reph = false;
+              if (ch === 'ರ' && text[i+1] === VIRAMA && isC(text[i+2])) { reph = true; i += 2; }
+
+              const c0 = text[i++];
+              let ottus = '';
+              while (text[i] === VIRAMA && isC(text[i+1])) { ottus += T[text[i+1]][2]; i += 2; }
+
+              const m = text[i];
+              const base = T[c0][0], iForm = T[c0][1];
+              const hasO = ottus.length > 0;
+              const E = stemE[c0], A = stemA[c0], S = stem[c0];
+              let g;
+
+              switch (m) {
+                case 'ಾ': g = A + 'Á' + ottus; i++; break;
+                case 'ಿ': g = iForm + ottus; i++; break;
+                case 'ೀ': g = hasO ? base + ottus + 'Ã' : iForm + 'Ã'; i++; break;
+                case 'ು': g = base + ottus + 'Ä'; i++; break;
+                case 'ೂ': g = base + ottus + 'Æ'; i++; break;
+                case 'ೃ': g = base + ottus + 'È'; i++; break;
+                case 'ೆ': g = E + ottus; i++; break;
+                case 'ೇ': g = E + ottus + 'Ã'; i++; break;
+                case 'ೈ': g = E + ottus + 'Ê'; i++; break;
+                case 'ೊ': g = S + 'ÉÆ' + ottus; i++; break;
+                case 'ೋ': g = S + 'ÉÆ' + ottus + 'Ã'; i++; break;
+                case 'ೌ': g = S + 'Ë' + ottus; i++; break;
+                case VIRAMA: g = (hasO ? base + ottus : A) + 'ï'; i++; break;
+                default: g = base + ottus;
+              }
+              out += g + (reph ? 'ð' : '');
+            }
+            else if (ch === 'ಂ') { out += 'A'; i++; }
+            else if (ch === 'ಃ') { out += 'B'; i++; }
+            else { out += ch; i++; }
+          }
+          return out;
+        }
+
+        // ---------- UI Handlers ----------
+        const recordBtn = document.getElementById('recordBtn');
+        const micIcon = document.getElementById('micIcon');
+        const recordInstruction = document.getElementById('recordInstruction');
+        const interimText = document.getElementById('interimText');
+        const statusBadge = document.getElementById('statusBadge');
+        const unicodeInput = document.getElementById('unicodeInput');
+        const nudiOutput = document.getElementById('nudiOutput');
+        const unicodeCharCount = document.getElementById('unicodeCharCount');
+        const nudiCharCount = document.getElementById('nudiCharCount');
+        const clearUnicodeBtn = document.getElementById('clearUnicodeBtn');
+        const copyUnicodeBtn = document.getElementById('copyUnicodeBtn');
+        const copyNudiBtn = document.getElementById('copyNudiBtn');
+        const toggleFontBtn = document.getElementById('toggleFontBtn');
+        const fontLabel = document.getElementById('fontLabel');
+
+        let isRecording = false;
+        let isNudiFontMode = true;
+        let recognition = null;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'kn-IN';
+
+            recognition.onstart = () => {
+                isRecording = true;
+                recordBtn.classList.add('recording-active');
+                micIcon.className = 'fa-solid fa-stop text-2xl sm:text-3xl';
+                recordInstruction.textContent = 'Listening... Speak in Kannada';
+                statusBadge.className = 'flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-500/10 border border-rose-500/30 text-rose-400 shadow-sm';
+                statusBadge.innerHTML = '<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></span><span>Live Recording</span>';
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                    else interimTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    unicodeInput.value += (unicodeInput.value ? ' ' : '') + finalTranscript;
+                    processConversion();
+                }
+                interimText.textContent = interimTranscript;
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error !== 'no-speech' && event.error !== 'aborted') stopRecording();
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    try { recognition.start(); } catch (e) { stopRecording(); }
+                } else {
+                    stopRecording();
+                }
+            };
+        } else {
+            recordInstruction.textContent = 'Speech recognition is not supported in this browser. Please use Google Chrome or MS Edge.';
+            recordBtn.disabled = true;
+            recordBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            recordBtn.classList.remove('recording-active');
+            micIcon.className = 'fa-solid fa-microphone text-2xl sm:text-3xl';
+            recordInstruction.textContent = 'Tap the microphone & start speaking in Kannada';
+            interimText.textContent = '';
+            statusBadge.className = 'flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-900/90 border border-slate-700/60 text-slate-300 shadow-inner';
+            statusBadge.innerHTML = '<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span><span>Ready</span>';
+        }
+
+        recordBtn.addEventListener('click', () => {
+            if (!recognition) return;
+            if (isRecording) {
+                isRecording = false;
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+
+        function processConversion() {
+            const unicodeText = unicodeInput.value;
+            const convertedNudi = convertUnicodeToNudi(unicodeText);
+            nudiOutput.value = convertedNudi;
+            unicodeCharCount.textContent = `${unicodeText.length} characters`;
+            nudiCharCount.textContent = `${convertedNudi.length} characters`;
+        }
+
+        unicodeInput.addEventListener('input', processConversion);
+
+        clearUnicodeBtn.addEventListener('click', () => {
+            unicodeInput.value = '';
+            processConversion();
+        });
+
+        copyUnicodeBtn.addEventListener('click', () => {
+            if (!unicodeInput.value) return;
+            navigator.clipboard.writeText(unicodeInput.value);
+            copyUnicodeBtn.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i> Copied!';
+            setTimeout(() => { copyUnicodeBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy'; }, 2000);
+        });
+
+        copyNudiBtn.addEventListener('click', () => {
+            if (!nudiOutput.value) return;
+            navigator.clipboard.writeText(nudiOutput.value);
+            copyNudiBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+            setTimeout(() => { copyNudiBtn.innerHTML = '<i class="fa-solid fa-copy"></i> Copy Nudi Text'; }, 2000);
+        });
+
+        toggleFontBtn.addEventListener('click', () => {
+            isNudiFontMode = !isNudiFontMode;
+            if (isNudiFontMode) {
+                nudiOutput.classList.add('nudi-direct-preview');
+                toggleFontBtn.innerHTML = '<i class="fa-solid fa-code"></i> Mode: Nudi Font';
+                fontLabel.textContent = 'Nudi 01 e (Visual)';
+            } else {
+                nudiOutput.classList.remove('nudi-direct-preview');
+                toggleFontBtn.innerHTML = '<i class="fa-solid fa-font"></i> Mode: Raw ASCII';
+                fontLabel.textContent = 'Raw ASCII';
+            }
+        });
+    </script>
+</body>
+</html>
